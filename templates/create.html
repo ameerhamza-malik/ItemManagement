@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Create Item</h2>
+{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+<form method="post">
+<div class="mb-3">
+<label class="form-label">Title</label>
+<input name="title" class="form-control" required value="{{ title or '' }}">
+</div>
+<div class="mb-3">
+<label class="form-label">Description</label>
+<textarea name="description" class="form-control">{{ description or '' }}</textarea>
+</div>
+<button class="btn btn-primary">Create</button>
+<a href="{{ url_for('index') }}" class="btn btn-secondary ms-2">Cancel</a>
+</form>
+{% endblock %}
