@@ -135,42 +135,9 @@ pipeline {
         }
         success {
             echo '✓ Build successful! All security checks passed.'
-            emailext (
-                subject: "SUCCESS: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
-                body: """
-                    Build Status: SUCCESS
-                    Job: ${env.JOB_NAME}
-                    Build Number: ${env.BUILD_NUMBER}
-                    
-                    Security Features Verified:
-                    - CSRF Protection: Enabled
-                    - Password Hashing: Bcrypt
-                    - Input Validation: WTForms
-                    - Session Security: Configured
-                    - Authentication: Flask-Login
-                    
-                    Build URL: ${env.BUILD_URL}
-                """,
-                to: 'hamza@example.com',
-                mimeType: 'text/plain'
-            )
         }
         failure {
             echo '✗ Build failed! Check logs for details.'
-            emailext (
-                subject: "FAILURE: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
-                body: """
-                    Build Status: FAILED
-                    Job: ${env.JOB_NAME}
-                    Build Number: ${env.BUILD_NUMBER}
-                    
-                    Please check the build logs for details.
-                    
-                    Build URL: ${env.BUILD_URL}
-                """,
-                to: 'hamza@example.com',
-                mimeType: 'text/plain'
-            )
         }
         unstable {
             echo '⚠ Build unstable. Review warnings and test failures.'
