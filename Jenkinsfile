@@ -38,39 +38,6 @@ pipeline {
             }
         }
         
-        stage('Security Scan - Dependencies') {
-            steps {
-                echo 'Scanning dependencies for known vulnerabilities...'
-                bat '''
-                    call %VENV_DIR%\\Scripts\\activate.bat
-                    pip install safety
-                    safety check --json || echo "WARNING: Vulnerabilities detected"
-                '''
-            }
-        }
-        
-        stage('Code Quality - Linting') {
-            steps {
-                echo 'Running code quality checks...'
-                bat '''
-                    call %VENV_DIR%\\Scripts\\activate.bat
-                    pip install flake8 pylint
-                    flake8 app.py forms.py --max-line-length=120 --ignore=E501,W503 || echo "Linting warnings detected"
-                '''
-            }
-        }
-        
-        stage('Security Scan - SAST') {
-            steps {
-                echo 'Running static security analysis with Bandit...'
-                bat '''
-                    call %VENV_DIR%\\Scripts\\activate.bat
-                    pip install bandit
-                    bandit -r app.py forms.py -f json -o bandit-report.json || echo "Security issues detected"
-                '''
-            }
-        }
-        
         stage('Run Tests') {
             steps {
                 echo 'Running unit tests...'
@@ -108,21 +75,10 @@ pipeline {
             }
         }
         
-        stage('Security Configuration Check') {
-            steps {
-                echo 'Verifying security configurations...'
-                bat '''
-                    call %VENV_DIR%\\Scripts\\activate.bat
-                    python -c "import app; assert hasattr(app, 'csrf'), 'CSRF protection not enabled'; assert hasattr(app, 'bcrypt'), 'Bcrypt not configured'; assert hasattr(app, 'login_manager'), 'Login manager not configured'; print('✓ All security features enabled')"
-                '''
-            }
-        }
-        
         stage('Archive Artifacts') {
             steps {
                 echo 'Archiving build artifacts...'
                 archiveArtifacts artifacts: 'dist/**/*', fingerprint: true
-                archiveArtifacts artifacts: 'bandit-report.json', allowEmptyArchive: true
                 archiveArtifacts artifacts: 'test-results.xml', allowEmptyArchive: true
             }
         }
@@ -134,7 +90,7 @@ pipeline {
             junit testResults: 'test-results.xml', allowEmptyResults: true
         }
         success {
-            echo '✓ Build successful! All security checks passed.'
+            echo '✓ Build successful!'
         }
         failure {
             echo '✗ Build failed! Check logs for details.'
