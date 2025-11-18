@@ -28,7 +28,7 @@ def reject_malicious_input(form, field):
     """
     if not field.data:
         return
-    
+
     suspicious_patterns = [
         r"(\bUNION\b.*\bSELECT\b)",
         r"(\bDROP\b.*\bTABLE\b)",
@@ -44,11 +44,12 @@ def reject_malicious_input(form, field):
         r";\s*DROP",
         r"'\s*(OR|AND)\s*'?\d*'?\s*=\s*'?\d*",  # ' OR '1'='1
     ]
-    
+
     data_upper = field.data.upper()
     for pattern in suspicious_patterns:
         if re.search(pattern, data_upper, re.IGNORECASE):
-            raise ValidationError("Invalid input detected. Please remove special characters or SQL/script keywords.")
+            raise ValidationError(
+                "Invalid input detected. Please remove special characters or SQL/script keywords.")
 
 
 class ItemForm(FlaskForm):
@@ -59,24 +60,31 @@ class ItemForm(FlaskForm):
     title = StringField(
         'Title',
         validators=[
-            DataRequired(message="Title is required."),
-            Length(min=1, max=250, message="Title must be between 1 and 250 characters."),
-            reject_malicious_input
-        ],
+            DataRequired(
+                message="Title is required."),
+            Length(
+                min=1,
+                max=250,
+                message="Title must be between 1 and 250 characters."),
+            reject_malicious_input],
         filters=[strip_filter],
-        render_kw={"class": "form-control", "required": True, "maxlength": "250"}
-    )
-    
+        render_kw={
+            "class": "form-control",
+            "required": True,
+            "maxlength": "250"})
+
     description = TextAreaField(
         'Description',
         validators=[
-            Length(max=5000, message="Description must not exceed 5000 characters."),
-            reject_malicious_input
-        ],
+            Length(
+                max=5000,
+                message="Description must not exceed 5000 characters."),
+            reject_malicious_input],
         filters=[strip_filter],
-        render_kw={"class": "form-control", "rows": "4"}
-    )
-    
+        render_kw={
+            "class": "form-control",
+            "rows": "4"})
+
     submit = SubmitField('Submit', render_kw={"class": "btn btn-primary"})
 
 
@@ -88,14 +96,19 @@ class RegistrationForm(FlaskForm):
     username = StringField(
         'Username',
         validators=[
-            DataRequired(message="Username is required."),
-            Length(min=3, max=50, message="Username must be between 3 and 50 characters."),
-            reject_malicious_input
-        ],
+            DataRequired(
+                message="Username is required."),
+            Length(
+                min=3,
+                max=50,
+                message="Username must be between 3 and 50 characters."),
+            reject_malicious_input],
         filters=[strip_filter],
-        render_kw={"class": "form-control", "required": True, "maxlength": "50"}
-    )
-    
+        render_kw={
+            "class": "form-control",
+            "required": True,
+            "maxlength": "50"})
+
     email = StringField(
         'Email',
         validators=[
@@ -106,16 +119,21 @@ class RegistrationForm(FlaskForm):
         filters=[strip_filter],
         render_kw={"class": "form-control", "required": True, "type": "email"}
     )
-    
+
     password = PasswordField(
         'Password',
         validators=[
-            DataRequired(message="Password is required."),
-            Length(min=8, max=128, message="Password must be between 8 and 128 characters.")
-        ],
-        render_kw={"class": "form-control", "required": True, "type": "password"}
-    )
-    
+            DataRequired(
+                message="Password is required."),
+            Length(
+                min=8,
+                max=128,
+                message="Password must be between 8 and 128 characters.")],
+        render_kw={
+            "class": "form-control",
+            "required": True,
+            "type": "password"})
+
     confirm_password = PasswordField(
         'Confirm Password',
         validators=[
@@ -124,8 +142,10 @@ class RegistrationForm(FlaskForm):
         ],
         render_kw={"class": "form-control", "required": True, "type": "password"}
     )
-    
-    submit = SubmitField('Register', render_kw={"class": "btn btn-primary w-100"})
+
+    submit = SubmitField(
+        'Register', render_kw={
+            "class": "btn btn-primary w-100"})
 
 
 class LoginForm(FlaskForm):
@@ -141,13 +161,15 @@ class LoginForm(FlaskForm):
         filters=[strip_filter],
         render_kw={"class": "form-control", "required": True}
     )
-    
+
     password = PasswordField(
         'Password',
         validators=[
-            DataRequired(message="Password is required.")
-        ],
-        render_kw={"class": "form-control", "required": True, "type": "password"}
-    )
-    
+            DataRequired(
+                message="Password is required.")],
+        render_kw={
+            "class": "form-control",
+            "required": True,
+            "type": "password"})
+
     submit = SubmitField('Login', render_kw={"class": "btn btn-primary w-100"})

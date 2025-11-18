@@ -50,19 +50,26 @@ login_manager.login_message = 'Please log in to access this page.'
 login_manager.login_message_category = 'warning'
 
 # Secure Session Configuration
-app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access to cookies
+# Prevent JavaScript access to cookies
+app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
-app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)  # Session expires after 2 hours
-app.config['WTF_CSRF_TIME_LIMIT'] = None  # CSRF tokens don't expire (use session lifetime instead)
+# Set to True in production with HTTPS
+app.config['SESSION_COOKIE_SECURE'] = False
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(
+    hours=2)  # Session expires after 2 hours
+# CSRF tokens don't expire (use session lifetime instead)
+app.config['WTF_CSRF_TIME_LIMIT'] = None
 
 # ---------- DB helpers ----------
+
+
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
         db = g._database = sqlite3.connect(app.config['DATABASE'])
         db.row_factory = sqlite3.Row
     return db
+
 
 def column_exists(table: str, column: str) -> bool:
     """Check if a column exists in a table"""
@@ -71,11 +78,14 @@ def column_exists(table: str, column: str) -> bool:
     cols = [r["name"] for r in cur.fetchall()]
     return column in cols
 
+
 def table_exists(table: str) -> bool:
     """Check if a table exists in the database"""
     db = get_db()
-    cur = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,))
+    cur = db.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,))
     return cur.fetchone() is not None
+
 
 def init_db():
     """
@@ -84,7 +94,8 @@ def init_db():
     """
     db = get_db()
 
-    # Create items table with minimal schema (without created_at) if it doesn't exist
+    # Create items table with minimal schema (without created_at) if it
+    # doesn't exist
     db.execute(
         '''
         CREATE TABLE IF NOT EXISTS items (
@@ -112,13 +123,16 @@ def init_db():
     )
     db.commit()
 
-    # If created_at column is missing in items, add it and populate existing rows
+    # If created_at column is missing in items, add it and populate existing
+    # rows
     if not column_exists('items', 'created_at'):
-        db.execute("ALTER TABLE items ADD COLUMN created_at DATETIME DEFAULT (CURRENT_TIMESTAMP)")
+        db.execute(
+            "ALTER TABLE items ADD COLUMN created_at DATETIME DEFAULT (CURRENT_TIMESTAMP)")
         db.commit()
-        db.execute("UPDATE items SET created_at = (datetime('now')) WHERE created_at IS NULL")
+        db.execute(
+            "UPDATE items SET created_at = (datetime('now')) WHERE created_at IS NULL")
         db.commit()
-    
+
     # Add user_id column to items if it doesn't exist
     if not column_exists('items', 'user_id'):
         db.execute("ALTER TABLE items ADD COLUMN user_id INTEGER")
@@ -128,6 +142,7 @@ def init_db():
 # User class for Flask-Login
 class User(UserMixin):
     """User model for authentication"""
+
     def __init__(self, id, username, email):
         self.id = id
         self.username = username
@@ -138,11 +153,13 @@ class User(UserMixin):
 def load_user(user_id):
     """Load user by ID for Flask-Login"""
     db = get_db()
-    cur = db.execute('SELECT id, username, email FROM users WHERE id = ?', (user_id,))
+    cur = db.execute(
+        'SELECT id, username, email FROM users WHERE id = ?', (user_id,))
     user_data = cur.fetchone()
     if user_data:
         return User(user_data['id'], user_data['username'], user_data['email'])
     return None
+
 
 @app.teardown_appcontext
 def close_connection(exception):
@@ -151,6 +168,8 @@ def close_connection(exception):
         db.close()
 
 # ---------- utility ----------
+
+
 def query_items(search=None, page=1, page_size=PAGE_SIZE, user_id=None):
     """
     Query items with parameterized queries to prevent SQL injection.
@@ -159,16 +178,16 @@ def query_items(search=None, page=1, page_size=PAGE_SIZE, user_id=None):
     db = get_db()
     params = []
     where_clauses = []
-    
+
     if search:
         where_clauses.append("(title LIKE ? OR description LIKE ?)")
         q = f"%{search}%"
         params.extend([q, q])
-    
+
     if user_id is not None:
         where_clauses.append("user_id = ?")
         params.append(user_id)
-    
+
     where = ""
     if where_clauses:
         where = "WHERE " + " AND ".join(where_clauses)
@@ -189,43 +208,47 @@ def query_items(search=None, page=1, page_size=PAGE_SIZE, user_id=None):
 # ---------- routes ----------
 
 # Authentication Routes
+
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     """User registration with secure password hashing"""
     if current_user.is_authenticated:
         return redirect(url_for('index'))
-    
+
     form = RegistrationForm()
-    
+
     if form.validate_on_submit():
         username = form.username.data
         email = form.email.data
         password = form.password.data
-        
+
         # Check if username or email already exists - parameterized query
         db = get_db()
         existing_user = db.execute(
             'SELECT id FROM users WHERE username = ? OR email = ?',
             (username, email)
         ).fetchone()
-        
+
         if existing_user:
-            flash('Username or email already exists. Please choose a different one.', 'danger')
+            flash(
+                'Username or email already exists. Please choose a different one.',
+                'danger')
             return render_template('register.html', form=form)
-        
+
         # Hash password securely with bcrypt
         password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
-        
+
         # Insert new user - parameterized query
         db.execute(
             'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
             (username, email, password_hash)
         )
         db.commit()
-        
+
         flash('Registration successful! Please log in.', 'success')
         return redirect(url_for('login'))
-    
+
     return render_template('register.html', form=form)
 
 
@@ -234,32 +257,37 @@ def login():
     """User login with secure password verification"""
     if current_user.is_authenticated:
         return redirect(url_for('index'))
-    
+
     form = LoginForm()
-    
+
     if form.validate_on_submit():
         username = form.username.data
         password = form.password.data
-        
+
         # Retrieve user - parameterized query
         db = get_db()
         user_data = db.execute(
             'SELECT id, username, email, password_hash FROM users WHERE username = ?',
             (username,)
         ).fetchone()
-        
+
         # Verify password using bcrypt
-        if user_data and bcrypt.check_password_hash(user_data['password_hash'], password):
-            user = User(user_data['id'], user_data['username'], user_data['email'])
+        if user_data and bcrypt.check_password_hash(
+                user_data['password_hash'], password):
+            user = User(
+                user_data['id'],
+                user_data['username'],
+                user_data['email'])
             login_user(user)
             flash(f'Welcome back, {username}!', 'success')
-            
+
             # Redirect to next page if specified, otherwise to index
             next_page = request.args.get('next')
-            return redirect(next_page) if next_page else redirect(url_for('index'))
+            return redirect(next_page) if next_page else redirect(
+                url_for('index'))
         else:
             flash('Invalid username or password. Please try again.', 'danger')
-    
+
     return render_template('login.html', form=form)
 
 
@@ -286,23 +314,24 @@ def index():
 
     items, total = query_items(search=q, page=page)
     total_pages = max(1, math.ceil(total / PAGE_SIZE))
-    
+
     # Create form for modal (requires CSRF token)
     form = ItemForm()
-    
-    return render_template('index.html', items=items, q=q, page=page, 
-                         total_pages=total_pages, total=total, form=form)
+
+    return render_template('index.html', items=items, q=q, page=page,
+                           total_pages=total_pages, total=total, form=form)
+
 
 @app.route('/create', methods=['GET', 'POST'])
 @login_required
 def create():
     """Create new item with secure form validation and parameterized queries"""
     form = ItemForm()
-    
+
     if form.validate_on_submit():
         title = form.title.data
         description = form.description.data
-        
+
         # Insert with parameterized query
         db = get_db()
         db.execute(
@@ -312,18 +341,19 @@ def create():
         db.commit()
         flash('Item created successfully.', 'success')
         return redirect(url_for('index'))
-    
+
     # If validation fails, redisplay form with errors
     if form.errors:
         for field, errors in form.errors.items():
             for error in errors:
                 flash(f'{field}: {error}', 'danger')
-    
+
     q = request.args.get('q', '').strip()
     items, total = query_items(search=q, page=1)
     return render_template('index.html', items=items, q=q, page=1,
-                         total_pages=max(1, math.ceil(total / PAGE_SIZE)),
-                         total=total, form=form, show_create_modal=True)
+                           total_pages=max(1, math.ceil(total / PAGE_SIZE)),
+                           total=total, form=form, show_create_modal=True)
+
 
 @app.route('/item/<int:item_id>')
 def view_item(item_id):
@@ -344,17 +374,17 @@ def edit(item_id):
     db = get_db()
     cur = db.execute('SELECT * FROM items WHERE id = ?', (item_id,))
     item = cur.fetchone()
-    
+
     if item is None:
         flash('Item not found.', 'warning')
         return redirect(url_for('index'))
-    
+
     form = ItemForm()
-    
+
     if form.validate_on_submit():
         title = form.title.data
         description = form.description.data
-        
+
         # Update with parameterized query
         db.execute(
             'UPDATE items SET title = ?, description = ? WHERE id = ?',
@@ -363,13 +393,14 @@ def edit(item_id):
         db.commit()
         flash('Item updated successfully.', 'success')
         return redirect(url_for('view_item', item_id=item_id))
-    
+
     # Prepopulate form with existing data on GET request
     if request.method == 'GET':
         form.title.data = item['title']
         form.description.data = item['description']
-    
+
     return render_template('edit.html', item=item, form=form)
+
 
 @app.route('/item/<int:item_id>/delete', methods=['POST'])
 @login_required
@@ -394,6 +425,7 @@ def page_not_found(e):
 def internal_server_error(e):
     """Custom 500 error handler to prevent stack trace exposure"""
     return render_template('errors/500.html'), 500
+
 
 # ---------- run ----------
 if __name__ == '__main__':
