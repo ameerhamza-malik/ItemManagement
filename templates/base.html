@@ -28,7 +28,20 @@
           <button class="btn btn-light" type="submit">Search</button>
         </form>
 
-        <button class="btn btn-light ms-3" data-bs-toggle="modal" data-bs-target="#createModal">+ Create</button>
+        {% if current_user.is_authenticated %}
+          <button class="btn btn-light ms-3" data-bs-toggle="modal" data-bs-target="#createModal">+ Create</button>
+          <div class="dropdown ms-2">
+            <button class="btn btn-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              {{ current_user.username }}
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+              <li><a class="dropdown-item" href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+          </div>
+        {% else %}
+          <a href="{{ url_for('login') }}" class="btn btn-light ms-3">Login</a>
+          <a href="{{ url_for('register') }}" class="btn btn-outline-light ms-2">Register</a>
+        {% endif %}
       </div>
     </nav>
 
