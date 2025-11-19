@@ -6,6 +6,8 @@ pipeline {
         VENV_DIR = 'venv'
         APP_NAME = 'ItemManagement'
         FLASK_ENV = 'production'
+        SONAR_PROJECT_KEY = 'ItemManagement'
+        SONAR_PROJECT_NAME = 'Item Management System'
     }
     
     stages {
@@ -45,6 +47,36 @@ pipeline {
                     call %VENV_DIR%\\Scripts\\activate.bat
                     pytest --verbose --junit-xml=test-results.xml || exit 0
                 '''
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            steps {
+                echo 'Running SonarQube code analysis...'
+                script {
+                    def scannerHome = tool 'sonar-scanner'
+                    withSonarQubeEnv('SonarQube') {
+                        bat """
+                            "${scannerHome}\\bin\\sonar-scanner.bat" ^
+                            -Dsonar.projectKey=%SONAR_PROJECT_KEY% ^
+                            -Dsonar.projectName="%SONAR_PROJECT_NAME%" ^
+                            -Dsonar.sources=. ^
+                            -Dsonar.inclusions=**/*.py ^
+                            -Dsonar.exclusions=venv/**,dist/**,__pycache__/**,*.pyc ^
+                            -Dsonar.python.version=3.9 ^
+                            -Dsonar.sourceEncoding=UTF-8
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Quality Gate') {
+            steps {
+                echo 'Checking SonarQube Quality Gate...'
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: false
+                }
             }
         }
         
