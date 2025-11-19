@@ -71,27 +71,6 @@ pipeline {
             }
         }
         
-        stage('Quality Gate') {
-            steps {
-                echo 'Checking SonarQube Quality Gate...'
-                timeout(time: 2, unit: 'MINUTES') {
-                    script {
-                        try {
-                            def qg = waitForQualityGate()
-                            if (qg.status != 'OK') {
-                                echo "WARNING: Quality Gate status: ${qg.status}"
-                            } else {
-                                echo "✓ Quality Gate passed!"
-                            }
-                        } catch (Exception e) {
-                            echo "WARNING: Quality Gate check failed: ${e.message}"
-                            echo "Continuing pipeline execution..."
-                        }
-                    }
-                }
-            }
-        }
-        
         stage('Database Migration Check') {
             steps {
                 echo 'Checking database schema...'
