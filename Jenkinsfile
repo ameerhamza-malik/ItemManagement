@@ -6,36 +6,26 @@ pipeline {
         VENV_DIR = 'venv'
         APP_NAME = 'ItemManagement'
         FLASK_ENV = 'production'
-        SONAR_PROJECT_KEY = 'ItemManagement'
-        SONAR_PROJECT_NAME = 'Item Management System'
+        DEPLOY_TARGET = 'C:\\Hamza\\Labs\\Lab11\\ItemManagement\\deploy_target'
     }
     
     stages {
-        stage('Checkout') {
+        stage('Clone Repository') {
             steps {
-                echo 'Checking out code from repository...'
+                echo 'Cloning repository...'
                 checkout scm
-            }
-        }
-        
-        stage('Setup Python Environment') {
-            steps {
-                echo 'Setting up Python virtual environment...'
-                bat '''
-                    python --version
-                    python -m venv %VENV_DIR%
-                    call %VENV_DIR%\\Scripts\\activate.bat
-                    python -m pip install --upgrade pip
-                '''
             }
         }
         
         stage('Install Dependencies') {
             steps {
-                echo 'Installing Python dependencies...'
+                echo 'Installing dependencies...'
                 bat '''
+                    python -m venv %VENV_DIR%
                     call %VENV_DIR%\\Scripts\\activate.bat
+                    python -m pip install --upgrade pip
                     pip install -r requirements.txt
+                    pip install pytest
                 '''
             }
         }
@@ -45,53 +35,14 @@ pipeline {
                 echo 'Running unit tests...'
                 bat '''
                     call %VENV_DIR%\\Scripts\\activate.bat
-                    pytest --verbose --junit-xml=test-results.xml || exit 0
-                '''
-            }
-        }
-        
-        stage('SonarQube Analysis') {
-            steps {
-                echo 'Running SonarQube code analysis...'
-                script {
-                    def scannerHome = tool 'sonar-scanner'
-                    withSonarQubeEnv('SonarQubeServer') {
-                        bat """
-                            "${scannerHome}\\bin\\sonar-scanner.bat" ^
-                            -Dsonar.projectKey=%SONAR_PROJECT_KEY% ^
-                            -Dsonar.projectName="%SONAR_PROJECT_NAME%" ^
-                            -Dsonar.sources=. ^
-                            -Dsonar.inclusions=**/*.py ^
-                            -Dsonar.exclusions=venv/**,dist/**,__pycache__/**,*.pyc ^
-                            -Dsonar.python.version=3.9 ^
-                            -Dsonar.sourceEncoding=UTF-8
-                        """
-                    }
-                }
-            }
-        }
-        
-        stage('Quality Gate') {
-            steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
-        
-        stage('Database Migration Check') {
-            steps {
-                echo 'Checking database schema...'
-                bat '''
-                    call %VENV_DIR%\\Scripts\\activate.bat
-                    python -c "import sqlite3; conn = sqlite3.connect('items.db'); print('✓ Database accessible')" || exit 0
+                    pytest --verbose --junit-xml=test-results.xml
                 '''
             }
         }
         
         stage('Build Artifact') {
             steps {
-                echo 'Creating deployment artifact...'
+                echo 'Building application package...'
                 bat '''
                     if exist dist rmdir /s /q dist
                     mkdir dist
@@ -100,34 +51,27 @@ pipeline {
                     copy app.py dist\\
                     copy forms.py dist\\
                     copy requirements.txt dist\\
-                    copy SECURITY_REPORT.md dist\\
-                    copy QUICKSTART.md dist\\
                 '''
             }
         }
         
-        stage('Archive Artifacts') {
+        stage('Deploy (Simulate)') {
             steps {
-                echo 'Archiving build artifacts...'
-                archiveArtifacts artifacts: 'dist/**/*', fingerprint: true
-                archiveArtifacts artifacts: 'test-results.xml', allowEmptyArchive: true
+                echo 'Deploying application to target directory...'
+                bat '''
+                    if not exist "%DEPLOY_TARGET%" mkdir "%DEPLOY_TARGET%"
+                    xcopy /E /I /Y dist "%DEPLOY_TARGET%"
+                '''
             }
         }
     }
     
     post {
         always {
-            echo 'Pipeline execution completed!'
             junit testResults: 'test-results.xml', allowEmptyResults: true
         }
         success {
-            echo '✓ Build successful!'
-        }
-        failure {
-            echo '✗ Build failed! Check logs for details.'
-        }
-        unstable {
-            echo '⚠ Build unstable. Review warnings and test failures.'
+            echo 'Deployment successful!'
         }
     }
 }
